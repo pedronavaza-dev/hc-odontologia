@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cargar compra — HC Odontología</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+
+  <div class="max-w-md mx-auto bg-white min-h-screen shadow-lg pb-24">
+
+    <!-- Header -->
+    <header class="bg-purple-600 text-white px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
+      <a href="index.html" class="text-2xl hover:opacity-70">←</a>
+      <h1 class="text-lg font-bold">Nueva compra</h1>
+    </header>
+
+    <!-- AVISO MAQUETA -->
+    <div class="mx-4 mt-4 bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-xs text-yellow-800">
+      🚧 <strong>Maqueta visual.</strong> Esta pantalla muestra cómo se verá el módulo de Compras. La funcionalidad completa se implementará después del TP, cuando se conecte con la base de datos real.
+    </div>
+
+    <form onsubmit="event.preventDefault(); document.getElementById('toast').classList.remove('hidden'); setTimeout(() => window.location.href='index.html', 1500);" class="p-4 space-y-4">
+
+      <!-- FECHA -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Fecha</label>
+        <input type="date" value="2026-07-07"
+               class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:border-purple-500 focus:outline-none">
+      </div>
+
+      <!-- PROVEEDOR (select con 2 opciones para mostrar ambos casos) -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Proveedor</label>
+        <select id="sel-proveedor" onchange="cambiarProveedor(this.value)"
+                class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:border-purple-500 focus:outline-none">
+          <option value="lab" selected>Roberto — 🧪 Laboratorio</option>
+          <option value="ins">Dipadent — 📦 Insumos</option>
+        </select>
+        <p class="text-xs text-gray-500 mt-1">
+          💡 En la app real hay un solo formulario que se adapta según el tipo del proveedor. Probá cambiar y mirá cómo cambian los items.
+        </p>
+      </div>
+
+      <!-- NRO COMPROBANTE -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1">
+          Nro. comprobante <span id="comprobante-opcional" class="text-gray-400 text-xs">(opcional)</span>
+        </label>
+        <input id="input-comprobante" type="text" value="33788"
+               class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:border-purple-500 focus:outline-none">
+      </div>
+
+      <!-- ITEMS LABORATORIO -->
+      <div id="items-lab">
+        <div class="flex justify-between items-center mb-2">
+          <label class="text-sm font-semibold text-gray-700">Trabajos</label>
+        </div>
+        <p class="text-xs text-gray-500 mb-3">
+          Al ser laboratorio, cada trabajo se asocia a un paciente.
+        </p>
+
+        <div class="space-y-2">
+          <div class="bg-white border border-gray-300 rounded-xl p-3">
+            <div class="flex justify-between items-start mb-2">
+              <div>
+                <div class="text-xs text-gray-500 uppercase font-bold">Trabajo 1</div>
+                <div class="font-semibold text-gray-900">Corona emax</div>
+                <div class="text-xs text-gray-600">Paciente: González, F.</div>
+              </div>
+              <div class="text-right">
+                <div class="font-bold text-gray-900">$60.000</div>
+                <button type="button" class="text-red-500 text-lg mt-1">🗑️</button>
+              </div>
+            </div>
+          </div>
+          <div class="bg-white border border-gray-300 rounded-xl p-3">
+            <div class="flex justify-between items-start mb-2">
+              <div>
+                <div class="text-xs text-gray-500 uppercase font-bold">Trabajo 2</div>
+                <div class="font-semibold text-gray-900">Corona emax</div>
+                <div class="text-xs text-gray-600">Paciente: Rodríguez, S.</div>
+              </div>
+              <div class="text-right">
+                <div class="font-bold text-gray-900">$60.000</div>
+                <button type="button" class="text-red-500 text-lg mt-1">🗑️</button>
+              </div>
+            </div>
+          </div>
+          <div class="bg-white border border-gray-300 rounded-xl p-3">
+            <div class="flex justify-between items-start mb-2">
+              <div>
+                <div class="text-xs text-gray-500 uppercase font-bold">Trabajo 3</div>
+                <div class="font-semibold text-gray-900">Provisional</div>
+                <div class="text-xs text-gray-600">Paciente: Pérez, E.</div>
+              </div>
+              <div class="text-right">
+                <div class="font-bold text-gray-900">$65.000</div>
+                <button type="button" class="text-red-500 text-lg mt-1">🗑️</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button type="button"
+                class="w-full flex items-center justify-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 py-2 rounded-xl font-semibold text-sm transition mt-3">
+          <span>➕</span>
+          <span>Agregar trabajo</span>
+        </button>
+      </div>
+
+      <!-- ITEMS INSUMOS -->
+      <div id="items-ins" class="hidden">
+        <div class="flex justify-between items-center mb-2">
+          <label class="text-sm font-semibold text-gray-700">Items</label>
+        </div>
+        <p class="text-xs text-gray-500 mb-3">
+          Al ser proveedor de insumos, cada item lleva cantidad, unidad y precio unitario (sin paciente).
+        </p>
+
+        <div class="space-y-2">
+          <!-- Item 1 -->
+          <div class="bg-white border border-gray-300 rounded-xl p-3">
+            <div class="flex justify-between items-start mb-2">
+              <div class="flex-1">
+                <div class="text-xs text-gray-500 uppercase font-bold">Item 1</div>
+                <div class="font-semibold text-gray-900">Composite z250 a3</div>
+                <div class="text-xs text-gray-600">1 × jeringa · $25.000 c/u</div>
+              </div>
+              <div class="text-right">
+                <div class="text-xs text-gray-500">Subtotal</div>
+                <div class="font-bold text-gray-900">$25.000</div>
+                <button type="button" class="text-red-500 text-lg mt-1">🗑️</button>
+              </div>
+            </div>
+          </div>
+          <!-- Item 2 -->
+          <div class="bg-white border border-gray-300 rounded-xl p-3">
+            <div class="flex justify-between items-start mb-2">
+              <div class="flex-1">
+                <div class="text-xs text-gray-500 uppercase font-bold">Item 2</div>
+                <div class="font-semibold text-gray-900">Anestesia</div>
+                <div class="text-xs text-gray-600">3 × Caja x 50 · $15.000 c/u</div>
+              </div>
+              <div class="text-right">
+                <div class="text-xs text-gray-500">Subtotal</div>
+                <div class="font-bold text-gray-900">$45.000</div>
+                <button type="button" class="text-red-500 text-lg mt-1">🗑️</button>
+              </div>
+            </div>
+          </div>
+          <!-- Item 3 -->
+          <div class="bg-white border border-gray-300 rounded-xl p-3">
+            <div class="flex justify-between items-start mb-2">
+              <div class="flex-1">
+                <div class="text-xs text-gray-500 uppercase font-bold">Item 3</div>
+                <div class="font-semibold text-gray-900">Gasa</div>
+                <div class="text-xs text-gray-600">2 × Pack x 100 · $1.750 c/u</div>
+              </div>
+              <div class="text-right">
+                <div class="text-xs text-gray-500">Subtotal</div>
+                <div class="font-bold text-gray-900">$3.500</div>
+                <button type="button" class="text-red-500 text-lg mt-1">🗑️</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button type="button"
+                class="w-full flex items-center justify-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 py-2 rounded-xl font-semibold text-sm transition mt-3">
+          <span>➕</span>
+          <span>Agregar item</span>
+        </button>
+      </div>
+
+      <!-- TOTAL -->
+      <div class="bg-purple-50 border border-purple-200 rounded-xl p-4 flex justify-between items-center">
+        <span class="text-gray-900 font-semibold">TOTAL</span>
+        <span id="total-compra" class="font-bold text-xl text-purple-700">$185.000</span>
+      </div>
+
+      <!-- GUARDAR -->
+      <button type="submit"
+              class="w-full flex items-center justify-center gap-2 bg-purple-500 hover:bg-purple-600 text-white text-lg font-semibold py-4 rounded-2xl shadow-md transition mt-4">
+        <span class="text-xl">💾</span>
+        <span>Guardar compra</span>
+      </button>
+
+      <p class="text-xs text-center text-gray-400">
+        Al guardar la compra, aparece en Deudas a proveedores hasta que se pague.
+      </p>
+    </form>
+
+    <!-- TOAST (maqueta) -->
+    <div id="toast" class="hidden fixed top-20 left-1/2 -translate-x-1/2 bg-yellow-500 text-white px-6 py-3 rounded-xl shadow-lg z-50 font-semibold text-sm">
+      🚧 Guardado simulado (maqueta)
+    </div>
+
+    <script>
+      function cambiarProveedor(tipo) {
+        const lab = document.getElementById('items-lab');
+        const ins = document.getElementById('items-ins');
+        const total = document.getElementById('total-compra');
+        const compEl = document.getElementById('input-comprobante');
+        if (tipo === 'lab') {
+          lab.classList.remove('hidden');
+          ins.classList.add('hidden');
+          total.textContent = '$185.000';
+          compEl.value = '33788';
+        } else {
+          lab.classList.add('hidden');
+          ins.classList.remove('hidden');
+          total.textContent = '$73.500';
+          compEl.value = '1247';
+        }
+      }
+    </script>
+
+    <!-- Barra inferior -->
+    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-200 flex justify-around py-2 shadow-lg">
+      <a href="index.html" class="flex flex-col items-center text-gray-400 text-xs">
+        <span class="text-2xl">🏠</span><span>Inicio</span>
+      </a>
+      <a href="lista-ventas.html" class="flex flex-col items-center text-gray-400 text-xs">
+        <span class="text-2xl">📋</span><span>Listas</span>
+      </a>
+      <a href="#" class="flex flex-col items-center text-gray-400 text-xs">
+        <span class="text-2xl">📁</span><span>Catálogos</span>
+      </a>
+      <a href="#" class="flex flex-col items-center text-gray-400 text-xs">
+        <span class="text-2xl">☰</span><span>Menú</span>
+      </a>
+    </nav>
+
+  </div>
+
+</body>
+</html>

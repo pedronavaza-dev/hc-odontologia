@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cargar cobro — HC Odontología</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+
+  <div class="max-w-md mx-auto bg-white min-h-screen shadow-lg pb-24">
+
+    <!-- Header -->
+    <header class="bg-blue-600 text-white px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
+      <a href="index.html" class="text-2xl hover:opacity-70">←</a>
+      <h1 class="text-lg font-bold">Cargar cobro</h1>
+    </header>
+
+    <div class="p-4 space-y-4">
+
+      <!-- Descripción -->
+      <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-900">
+        Cargá un cobro suelto de un paciente que quedó debiendo por una venta previa.
+      </div>
+
+      <!-- PASO 1: PACIENTE -->
+      <div class="relative">
+        <label class="block text-sm font-semibold text-gray-700 mb-1">1. Paciente</label>
+        <input type="text" id="paciente-input" autocomplete="off" placeholder="🔍 Buscar paciente..."
+               class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none">
+        <input type="hidden" id="paciente-id">
+        <div id="paciente-sugerencias" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto"></div>
+      </div>
+
+      <!-- PASO 2: OPERACIÓN A COBRAR -->
+      <div id="paso-operacion" class="hidden">
+        <label class="block text-sm font-semibold text-gray-700 mb-2">2. Operación a cobrar</label>
+        <div id="lista-operaciones" class="space-y-2"></div>
+        <input type="hidden" id="venta-id">
+      </div>
+
+      <!-- Mensaje: paciente sin deudas -->
+      <div id="sin-deudas" class="hidden bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-sm text-yellow-900">
+        Este paciente no tiene ventas con saldo pendiente. Si querés cargar una venta nueva, andá a
+        <a href="cargar-venta.html" class="underline font-semibold">Nueva venta</a>.
+      </div>
+
+      <!-- PASO 3: DATOS DEL COBRO -->
+      <form id="form-cobro" class="hidden space-y-4">
+        <div class="border-t border-gray-200 pt-4">
+          <label class="block text-sm font-semibold text-gray-700 mb-1">3. Datos del cobro</label>
+        </div>
+
+        <!-- Fecha -->
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Fecha</label>
+          <input type="date" id="fecha" required
+                 class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none">
+        </div>
+
+        <!-- Monto -->
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="block text-xs text-gray-500">Monto</label>
+            <button type="button" onclick="cobrarSaldoCompleto()" class="text-xs text-blue-600 font-semibold hover:underline">
+              Cobrar saldo completo
+            </button>
+          </div>
+          <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-lg">$</span>
+            <input type="text" id="monto" required inputmode="decimal" placeholder="0"
+                   class="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none text-lg">
+          </div>
+          <div id="monto-info" class="mt-1 text-xs text-gray-500">Saldo disponible: —</div>
+        </div>
+
+        <!-- Alerta si supera saldo -->
+        <div id="alerta-monto" class="hidden bg-red-50 border border-red-300 text-red-800 rounded-xl p-3 text-sm">
+          ⚠️ El monto ingresado supera el saldo pendiente de la operación.
+        </div>
+
+        <!-- Medio de cobro -->
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Medio de cobro</label>
+          <div class="flex gap-2">
+            <select id="medio-cobro" required
+                    class="flex-1 px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none">
+              <option value="">Elegí un medio...</option>
+            </select>
+            <button type="button" onclick="abrirModalMedio()"
+                    class="px-4 py-3 bg-green-50 hover:bg-green-100 border border-green-300 text-green-700 rounded-xl font-semibold transition">
+              ➕
+            </button>
+          </div>
+        </div>
+
+        <!-- Guardar -->
+        <button type="submit" id="btn-guardar"
+                class="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white text-lg font-semibold py-4 rounded-2xl shadow-md transition disabled:bg-gray-300 disabled:cursor-not-allowed">
+          <span class="text-xl">💾</span>
+          <span>Guardar cobro</span>
+        </button>
+      </form>
+
+    </div>
+
+    <!-- MODAL NUEVO MEDIO -->
+    <div id="modal-medio" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl w-full max-w-sm p-5 shadow-xl">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-bold">Nuevo medio de cobro</h3>
+          <button onclick="document.getElementById('modal-medio').classList.add('hidden')" class="text-2xl text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Nombre</label>
+          <input type="text" id="nuevo-medio-nombre" placeholder="Ej: Débito, Cheque..."
+                 class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none">
+        </div>
+        <button onclick="guardarNuevoMedio()"
+                class="w-full mt-5 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-xl transition">
+          💾 Guardar
+        </button>
+      </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="hidden fixed top-20 left-1/2 -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg z-50 font-semibold">
+      ✓ Cobro guardado
+    </div>
+
+    <!-- Barra inferior -->
+    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-200 flex justify-around py-2 shadow-lg">
+      <a href="index.html" class="flex flex-col items-center text-gray-400 text-xs">
+        <span class="text-2xl">🏠</span>
+        <span>Inicio</span>
+      </a>
+      <a href="lista-ventas.html" class="flex flex-col items-center text-gray-400 text-xs">
+        <span class="text-2xl">📋</span>
+        <span>Listas</span>
+      </a>
+      <a href="#" class="flex flex-col items-center text-gray-400 text-xs">
+        <span class="text-2xl">📁</span>
+        <span>Catálogos</span>
+      </a>
+      <a href="#" class="flex flex-col items-center text-gray-400 text-xs">
+        <span class="text-2xl">☰</span>
+        <span>Menú</span>
+      </a>
+    </nav>
+
+  </div>
+
+  <script>
+    // ================================================================
+    // Utils
+    // ================================================================
+    function formatearMonto(str) {
+      let valor = String(str).replace(/[^\d,]/g, '');
+      const partes = valor.split(',');
+      if (partes.length > 2) valor = partes[0] + ',' + partes.slice(1).join('');
+      const [entero, decimal] = valor.split(',');
+      const decLim = decimal !== undefined ? decimal.slice(0, 2) : undefined;
+      const entPuntos = entero.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      return decLim !== undefined ? entPuntos + ',' + decLim : entPuntos;
+    }
+    function parsearMonto(str) {
+      if (!str) return 0;
+      return parseFloat(String(str).replace(/\./g, '').replace(',', '.')) || 0;
+    }
+    function formatearNumeroAVisual(numero) {
+      if (numero === null || numero === undefined || numero === '') return '';
+      return formatearMonto(String(numero).replace('.', ','));
+    }
+    function formatearPesos(numero) {
+      return '$' + Number(numero || 0).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+    function getPacientes() { return JSON.parse(localStorage.getItem('pacientes') || '[]'); }
+    function getVentas() { return JSON.parse(localStorage.getItem('ventas') || '[]'); }
+    function getCobros() { return JSON.parse(localStorage.getItem('cobros') || '[]'); }
+    function getMediosCobro() { return JSON.parse(localStorage.getItem('mediosCobro') || '[]'); }
+
+    function saldoDeVenta(ventaId) {
+      const venta = getVentas().find(v => v.id == ventaId);
+      if (!venta) return 0;
+      const cobrado = getCobros().filter(c => c.ventaId == ventaId).reduce((a, c) => a + Number(c.monto || 0), 0);
+      return Number(venta.montoTotal || 0) - cobrado;
+    }
+
+    // ================================================================
+    // Autocompletado paciente
+    // ================================================================
+    const inputPac = document.getElementById('paciente-input');
+    const sugPac = document.getElementById('paciente-sugerencias');
+    const hiddenPacId = document.getElementById('paciente-id');
+
+    inputPac.addEventListener('input', () => {
+      const texto = inputPac.value.trim().toLowerCase();
+      hiddenPacId.value = '';
+      ocultarPasosPosteriores();
+      if (texto.length < 1) { sugPac.classList.add('hidden'); return; }
+      const pacientes = getPacientes();
+      const coincidencias = pacientes.filter(p => (p.apellido + ' ' + p.nombre).toLowerCase().includes(texto));
+      let html = '';
+      coincidencias.forEach(p => {
+        html += `
+          <div class="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+               onclick="seleccionarPaciente(${p.id}, '${p.apellido}, ${p.nombre}')">
+            <div class="font-semibold">${p.apellido}, ${p.nombre}</div>
+          </div>`;
+      });
+      if (coincidencias.length === 0) {
+        html += `<div class="px-4 py-3 text-gray-500 text-sm">Sin coincidencias. Para agregar un paciente nuevo, andá a Nueva venta.</div>`;
+      }
+      sugPac.innerHTML = html;
+      sugPac.classList.remove('hidden');
+    });
+
+    function seleccionarPaciente(id, nombreCompleto) {
+      inputPac.value = nombreCompleto;
+      hiddenPacId.value = id;
+      sugPac.classList.add('hidden');
+      mostrarOperacionesDelPaciente(id);
+    }
+
+    document.addEventListener('click', (e) => {
+      if (!inputPac.contains(e.target) && !sugPac.contains(e.target)) sugPac.classList.add('hidden');
+    });
+
+    function ocultarPasosPosteriores() {
+      document.getElementById('paso-operacion').classList.add('hidden');
+      document.getElementById('sin-deudas').classList.add('hidden');
+      document.getElementById('form-cobro').classList.add('hidden');
+      document.getElementById('venta-id').value = '';
+    }
+
+    // ================================================================
+    // Mostrar operaciones del paciente con saldo pendiente
+    // ================================================================
+    function mostrarOperacionesDelPaciente(pacienteId) {
+      const ventas = getVentas().filter(v => v.pacienteId == pacienteId);
+      const conSaldo = ventas
+        .map(v => ({ ...v, saldo: saldoDeVenta(v.id) }))
+        .filter(v => v.saldo > 0)
+        .sort((a, b) => a.fecha.localeCompare(b.fecha)); // más antigua primero
+
+      if (conSaldo.length === 0) {
+        document.getElementById('paso-operacion').classList.add('hidden');
+        document.getElementById('form-cobro').classList.add('hidden');
+        document.getElementById('sin-deudas').classList.remove('hidden');
+        return;
+      }
+
+      document.getElementById('sin-deudas').classList.add('hidden');
+
+      let html = '';
+      conSaldo.forEach(v => {
+        html += `
+          <label class="block cursor-pointer">
+            <input type="radio" name="op" value="${v.id}" class="peer sr-only"
+                   onchange="seleccionarOperacion(${v.id})">
+            <div class="border-2 border-gray-200 rounded-xl p-3 hover:border-blue-300 peer-checked:border-blue-500 peer-checked:bg-blue-50 transition">
+              <div class="flex justify-between items-start gap-2 mb-1">
+                <div>
+                  <div class="text-xs text-blue-700 font-bold">Op. #${v.numeroOperacion}</div>
+                  <div class="font-semibold text-gray-900">${v.prestacionNombre}</div>
+                </div>
+                <div class="text-right">
+                  <div class="text-xs text-gray-500">Saldo</div>
+                  <div class="font-bold text-red-600">${formatearPesos(v.saldo)}</div>
+                </div>
+              </div>
+              <div class="text-xs text-gray-500">${v.fecha}</div>
+            </div>
+          </label>`;
+      });
+
+      document.getElementById('lista-operaciones').innerHTML = html;
+      document.getElementById('paso-operacion').classList.remove('hidden');
+    }
+
+    function seleccionarOperacion(ventaId) {
+      document.getElementById('venta-id').value = ventaId;
+      const saldo = saldoDeVenta(ventaId);
+      document.getElementById('monto-info').textContent = 'Saldo disponible: ' + formatearPesos(saldo);
+      document.getElementById('form-cobro').classList.remove('hidden');
+      // Cargar medios en el select
+      cargarMedios();
+    }
+
+    function cobrarSaldoCompleto() {
+      const ventaId = document.getElementById('venta-id').value;
+      if (!ventaId) return;
+      const saldo = saldoDeVenta(ventaId);
+      document.getElementById('monto').value = formatearNumeroAVisual(saldo);
+      validarMonto();
+    }
+
+    // ================================================================
+    // Monto: validación en vivo
+    // ================================================================
+    const inputMonto = document.getElementById('monto');
+    inputMonto.addEventListener('input', (e) => {
+      const posCursor = e.target.selectionStart;
+      const largoAntes = e.target.value.length;
+      const nuevoValor = formatearMonto(e.target.value);
+      e.target.value = nuevoValor;
+      const dif = nuevoValor.length - largoAntes;
+      e.target.setSelectionRange(Math.max(0, posCursor + dif), Math.max(0, posCursor + dif));
+      validarMonto();
+    });
+
+    function validarMonto() {
+      const ventaId = document.getElementById('venta-id').value;
+      if (!ventaId) return;
+      const saldo = saldoDeVenta(ventaId);
+      const monto = parsearMonto(inputMonto.value);
+      const alerta = document.getElementById('alerta-monto');
+      const btn = document.getElementById('btn-guardar');
+      if (monto > saldo) {
+        alerta.classList.remove('hidden');
+        btn.disabled = true;
+      } else {
+        alerta.classList.add('hidden');
+        btn.disabled = false;
+      }
+    }
+
+    // ================================================================
+    // Medios de cobro
+    // ================================================================
+    function cargarMedios(seleccionarId) {
+      const select = document.getElementById('medio-cobro');
+      const medios = getMediosCobro().filter(m => m.activo);
+      let html = '<option value="">Elegí un medio...</option>';
+      medios.forEach(m => {
+        const sel = (m.id === seleccionarId) ? 'selected' : '';
+        html += `<option value="${m.id}" ${sel}>${m.nombre}</option>`;
+      });
+      select.innerHTML = html;
+    }
+
+    function abrirModalMedio() {
+      document.getElementById('nuevo-medio-nombre').value = '';
+      document.getElementById('modal-medio').classList.remove('hidden');
+    }
+
+    function guardarNuevoMedio() {
+      const nombre = document.getElementById('nuevo-medio-nombre').value.trim();
+      if (!nombre) { alert('Ingresá el nombre'); return; }
+      const medios = getMediosCobro();
+      if (medios.some(m => m.nombre.toLowerCase() === nombre.toLowerCase())) {
+        alert('Ya existe un medio con ese nombre'); return;
+      }
+      const nuevoId = medios.length ? Math.max(...medios.map(m => m.id)) + 1 : 1;
+      medios.push({ id: nuevoId, nombre, activo: true });
+      localStorage.setItem('mediosCobro', JSON.stringify(medios));
+      cargarMedios(nuevoId);
+      document.getElementById('modal-medio').classList.add('hidden');
+    }
+
+    // ================================================================
+    // Guardar cobro
+    // ================================================================
+    document.getElementById('form-cobro').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const ventaId = document.getElementById('venta-id').value;
+      if (!ventaId) { alert('Elegí una operación'); return; }
+      const monto = parsearMonto(inputMonto.value);
+      if (!monto || monto <= 0) { alert('Ingresá un monto válido'); return; }
+      const saldo = saldoDeVenta(ventaId);
+      if (monto > saldo) { alert('El monto supera el saldo pendiente'); return; }
+
+      const medioId = document.getElementById('medio-cobro').value;
+      if (!medioId) { alert('Elegí un medio de cobro'); return; }
+
+      const medio = getMediosCobro().find(m => m.id == medioId);
+      const cobro = {
+        id: Date.now(),
+        ventaId: Number(ventaId),
+        fecha: document.getElementById('fecha').value,
+        monto: monto,
+        medioCobroId: medio.id,
+        medioCobroNombre: medio.nombre
+      };
+
+      const cobros = getCobros();
+      cobros.push(cobro);
+      localStorage.setItem('cobros', JSON.stringify(cobros));
+
+      // Toast + redirigir
+      const toast = document.getElementById('toast');
+      const saldoDespues = saldo - monto;
+      toast.textContent = saldoDespues === 0 ? '✓ Cobro guardado — Operación saldada' : `✓ Cobro guardado — Saldo restante: ${formatearPesos(saldoDespues)}`;
+      toast.classList.remove('hidden');
+      setTimeout(() => { window.location.href = 'lista-ventas.html'; }, 1500);
+    });
+
+    // ================================================================
+    // Init
+    // ================================================================
+    document.getElementById('fecha').valueAsDate = new Date();
+
+    // Si viene con ?ventaId=X (desde deudores-por-venta) pre-cargar
+    const params = new URLSearchParams(window.location.search);
+    const ventaIdParam = params.get('ventaId');
+    if (ventaIdParam) {
+      const venta = getVentas().find(v => v.id == ventaIdParam);
+      if (venta) {
+        seleccionarPaciente(venta.pacienteId, venta.pacienteNombre);
+        // Marcar el radio correspondiente y seleccionar la operación
+        setTimeout(() => {
+          const radio = document.querySelector(`input[name="op"][value="${venta.id}"]`);
+          if (radio) { radio.checked = true; seleccionarOperacion(venta.id); }
+        }, 50);
+      }
+    }
+  </script>
+
+</body>
+</html>

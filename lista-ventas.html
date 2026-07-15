@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mis ventas — HC Odontología</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+
+  <div class="max-w-md mx-auto bg-white min-h-screen shadow-lg pb-24">
+
+    <!-- Header -->
+    <header class="bg-blue-600 text-white px-4 py-4 flex items-center gap-3 sticky top-0 z-10 shadow">
+      <a href="index.html" class="text-2xl hover:opacity-70">←</a>
+      <h1 class="text-lg font-bold">Mis ventas</h1>
+    </header>
+
+    <!-- FILTROS Y RESUMEN -->
+    <div class="p-4 bg-gray-50 border-b border-gray-200 space-y-3">
+
+      <!-- Filtro de período -->
+      <div>
+        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+          📅 Período
+        </label>
+        <select id="filtro-periodo"
+                class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none">
+          <option value="hoy">Hoy</option>
+          <option value="semana">Esta semana</option>
+          <option value="mes" selected>Este mes</option>
+          <option value="mes-anterior">Mes anterior</option>
+          <option value="todo">Todo</option>
+        </select>
+      </div>
+
+      <!-- Más filtros -->
+      <details class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <summary class="cursor-pointer px-4 py-3 flex justify-between items-center hover:bg-gray-50 transition select-none">
+          <span class="text-sm font-semibold text-gray-700">🔍 Más filtros <span id="chip-filtros-activos" class="hidden ml-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full"></span></span>
+          <span class="text-gray-400">▼</span>
+        </summary>
+        <div class="px-4 py-3 space-y-3 border-t border-gray-100">
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Paciente</label>
+            <select id="filtro-paciente" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Prestación</label>
+            <select id="filtro-prestacion" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm">
+              <option value="">Todas</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Medio de cobro (en algún pago)</label>
+            <select id="filtro-medio" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Estado</label>
+            <select id="filtro-estado" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm">
+              <option value="">Todas</option>
+              <option value="saldada">Solo saldadas</option>
+              <option value="con-saldo">Solo con saldo pendiente</option>
+            </select>
+          </div>
+          <button onclick="limpiarFiltrosExtra()" class="text-xs text-blue-600 hover:underline">
+            Limpiar filtros
+          </button>
+        </div>
+      </details>
+
+      <!-- Resumen 3 números clave -->
+      <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div class="grid grid-cols-3 divide-x divide-gray-200 text-center">
+          <div class="p-3">
+            <div class="text-xs text-gray-500 uppercase font-semibold">Facturado</div>
+            <div id="resumen-facturado" class="font-bold text-gray-900 mt-1 text-sm">$0</div>
+          </div>
+          <div class="p-3">
+            <div class="text-xs text-gray-500 uppercase font-semibold">Cobrado</div>
+            <div id="resumen-cobrado" class="font-bold text-green-700 mt-1 text-sm">$0</div>
+          </div>
+          <div class="p-3">
+            <div class="text-xs text-gray-500 uppercase font-semibold">Saldo</div>
+            <div id="resumen-saldo" class="font-bold text-red-600 mt-1 text-sm">$0</div>
+          </div>
+        </div>
+        <button onclick="exportarCSV()"
+                class="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-50 border-t border-gray-200 text-blue-700 font-semibold py-3 transition text-sm">
+          <span>📥</span>
+          <span>Exportar a Excel</span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- LISTA DE VENTAS -->
+    <div id="lista-ventas" class="pb-4"></div>
+
+    <!-- ESTADO VACÍO -->
+    <div id="estado-vacio" class="hidden p-8 text-center">
+      <div class="text-6xl mb-4">📋</div>
+      <h3 class="text-lg font-bold text-gray-700 mb-2">Todavía no hay ventas en este período</h3>
+      <p class="text-sm text-gray-500 mb-5">Cargá una venta nueva y va a aparecer acá.</p>
+      <a href="cargar-venta.html"
+         class="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold px-5 py-3 rounded-xl shadow-md transition">
+        <span>➕</span>
+        <span>Nueva venta</span>
+      </a>
+    </div>
+
+    <!-- MODAL DE DETALLE / BORRAR -->
+    <div id="modal-detalle" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center justify-center p-4">
+      <div class="bg-white rounded-2xl w-full max-w-sm p-5 shadow-xl max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-bold">Detalle de la venta</h3>
+          <button onclick="cerrarModal()" class="text-2xl text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+        <div id="detalle-contenido" class="space-y-2 mb-5"></div>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="cerrarModal()"
+                  class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 rounded-xl transition">
+            Cerrar
+          </button>
+          <button onclick="borrarVenta()"
+                  class="bg-red-500 hover:bg-red-600 text-white font-semibold py-3 rounded-xl transition">
+            🗑️ Borrar venta
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="hidden fixed top-20 left-1/2 -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg z-50 font-semibold">
+      ✓ Venta borrada
+    </div>
+
+    <!-- Barra inferior -->
+    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-200 flex justify-around py-2 shadow-lg">
+      <a href="index.html" class="flex flex-col items-center text-gray-400 text-xs">
+        <span class="text-2xl">🏠</span>
+        <span>Inicio</span>
+      </a>
+      <a href="lista-ventas.html" class="flex flex-col items-center text-blue-600 text-xs font-semibold">
+        <span class="text-2xl">📋</span>
+        <span>Listas</span>
+      </a>
+      <a href="#" class="flex flex-col items-center text-gray-400 text-xs">
+        <span class="text-2xl">📁</span>
+        <span>Catálogos</span>
+      </a>
+      <a href="#" class="flex flex-col items-center text-gray-400 text-xs">
+        <span class="text-2xl">☰</span>
+        <span>Menú</span>
+      </a>
+    </nav>
+
+  </div>
+
+  <script>
+    let ventaSeleccionadaId = null;
+
+    // ================================================================
+    // Formateo
+    // ================================================================
+    function formatearPesos(numero) {
+      return '$' + Number(numero || 0).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+    function emojiMedio(nombreMedio) {
+      const n = (nombreMedio || '').toLowerCase();
+      if (n.includes('efectivo')) return '💵';
+      if (n.includes('provincia') || n.includes('transfer') || n.includes('banco')) return '🏦';
+      if (n.includes('mercado pago') || n === 'mp') return '📱';
+      if (n.includes('débito') || n.includes('debito')) return '💳';
+      return '💰';
+    }
+    function formatearFechaEncabezado(fechaStr) {
+      const fecha = new Date(fechaStr + 'T00:00:00');
+      const hoy = new Date(); hoy.setHours(0,0,0,0);
+      const ayer = new Date(hoy); ayer.setDate(hoy.getDate() - 1);
+      if (fecha.getTime() === hoy.getTime()) return 'HOY';
+      if (fecha.getTime() === ayer.getTime()) return 'AYER';
+      const dias = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
+      const dd = String(fecha.getDate()).padStart(2, '0');
+      const mm = String(fecha.getMonth() + 1).padStart(2, '0');
+      return `${dias[fecha.getDay()]} ${dd}/${mm}`;
+    }
+
+    // ================================================================
+    // Filtros: rango de fecha
+    // ================================================================
+    function fechaEnRango(fechaStr, filtro) {
+      const fecha = new Date(fechaStr + 'T00:00:00');
+      const hoy = new Date(); hoy.setHours(0,0,0,0);
+      if (filtro === 'hoy') return fecha.getTime() === hoy.getTime();
+      if (filtro === 'semana') {
+        const inicio = new Date(hoy); inicio.setDate(hoy.getDate() - 6);
+        return fecha >= inicio && fecha <= hoy;
+      }
+      if (filtro === 'mes') return fecha.getMonth() === hoy.getMonth() && fecha.getFullYear() === hoy.getFullYear();
+      if (filtro === 'mes-anterior') {
+        const mesAnt = hoy.getMonth() === 0 ? 11 : hoy.getMonth() - 1;
+        const anioAnt = hoy.getMonth() === 0 ? hoy.getFullYear() - 1 : hoy.getFullYear();
+        return fecha.getMonth() === mesAnt && fecha.getFullYear() === anioAnt;
+      }
+      return true; // 'todo'
+    }
+
+    // ================================================================
+    // Helpers de saldo por venta
+    // ================================================================
+    function cobrosDeVenta(ventaId, todosLosCobros) {
+      return todosLosCobros.filter(c => c.ventaId == ventaId);
+    }
+    function cobradoDeVenta(venta, cobros) {
+      return cobros.filter(c => c.ventaId == venta.id).reduce((acc, c) => acc + Number(c.monto || 0), 0);
+    }
+    function saldoDeVenta(venta, cobros) {
+      return Number(venta.montoTotal || 0) - cobradoDeVenta(venta, cobros);
+    }
+
+    // ================================================================
+    // Cargar opciones de filtros extra
+    // ================================================================
+    function cargarFiltrosExtra() {
+      const pacientes = JSON.parse(localStorage.getItem('pacientes') || '[]');
+      const prestaciones = JSON.parse(localStorage.getItem('prestaciones') || '[]');
+      const medios = JSON.parse(localStorage.getItem('mediosCobro') || '[]');
+      const selPac = document.getElementById('filtro-paciente');
+      const selPre = document.getElementById('filtro-prestacion');
+      const selMed = document.getElementById('filtro-medio');
+      pacientes.sort((a,b) => (a.apellido+a.nombre).localeCompare(b.apellido+b.nombre));
+      prestaciones.sort((a,b) => a.nombre.localeCompare(b.nombre));
+
+      let htmlPac = '<option value="">Todos</option>';
+      pacientes.forEach(p => htmlPac += `<option value="${p.id}">${p.apellido}, ${p.nombre}</option>`);
+      selPac.innerHTML = htmlPac;
+
+      let htmlPre = '<option value="">Todas</option>';
+      prestaciones.forEach(p => htmlPre += `<option value="${p.id}">${p.nombre}</option>`);
+      selPre.innerHTML = htmlPre;
+
+      let htmlMed = '<option value="">Todos</option>';
+      medios.filter(m => m.activo).forEach(m => htmlMed += `<option value="${m.id}">${m.nombre}</option>`);
+      selMed.innerHTML = htmlMed;
+    }
+
+    function limpiarFiltrosExtra() {
+      document.getElementById('filtro-paciente').value = '';
+      document.getElementById('filtro-prestacion').value = '';
+      document.getElementById('filtro-medio').value = '';
+      document.getElementById('filtro-estado').value = '';
+      renderizar();
+    }
+
+    // ================================================================
+    // Obtener ventas filtradas (con info de cobros)
+    // ================================================================
+    function obtenerVentasFiltradas() {
+      const ventas = JSON.parse(localStorage.getItem('ventas') || '[]');
+      const cobros = JSON.parse(localStorage.getItem('cobros') || '[]');
+      const filtroPer = document.getElementById('filtro-periodo').value;
+      const fPac = document.getElementById('filtro-paciente').value;
+      const fPre = document.getElementById('filtro-prestacion').value;
+      const fMed = document.getElementById('filtro-medio').value;
+      const fEst = document.getElementById('filtro-estado').value;
+
+      return ventas
+        .filter(v => fechaEnRango(v.fecha, filtroPer))
+        .filter(v => !fPac || v.pacienteId == fPac)
+        .filter(v => !fPre || v.prestacionId == fPre)
+        .filter(v => {
+          if (!fMed) return true;
+          // Ventas que tengan al menos un cobro con este medio
+          return cobrosDeVenta(v.id, cobros).some(c => c.medioCobroId == fMed);
+        })
+        .filter(v => {
+          if (!fEst) return true;
+          const saldo = saldoDeVenta(v, cobros);
+          if (fEst === 'saldada') return saldo === 0;
+          if (fEst === 'con-saldo') return saldo > 0;
+          return true;
+        });
+    }
+
+    function actualizarChipFiltros() {
+      const fPac = document.getElementById('filtro-paciente').value;
+      const fPre = document.getElementById('filtro-prestacion').value;
+      const fMed = document.getElementById('filtro-medio').value;
+      const fEst = document.getElementById('filtro-estado').value;
+      const cant = [fPac, fPre, fMed, fEst].filter(v => v).length;
+      const chip = document.getElementById('chip-filtros-activos');
+      if (cant > 0) {
+        chip.textContent = `${cant} activo${cant > 1 ? 's' : ''}`;
+        chip.classList.remove('hidden');
+      } else {
+        chip.classList.add('hidden');
+      }
+    }
+
+    // ================================================================
+    // Render principal
+    // ================================================================
+    function renderizar() {
+      actualizarChipFiltros();
+      const cobros = JSON.parse(localStorage.getItem('cobros') || '[]');
+      const filtradas = obtenerVentasFiltradas();
+
+      // Resumen de totales
+      const facturado = filtradas.reduce((acc, v) => acc + Number(v.montoTotal || 0), 0);
+      const cobrado = filtradas.reduce((acc, v) => acc + cobradoDeVenta(v, cobros), 0);
+      const saldoTotal = facturado - cobrado;
+      document.getElementById('resumen-facturado').textContent = formatearPesos(facturado);
+      document.getElementById('resumen-cobrado').textContent = formatearPesos(cobrado);
+      document.getElementById('resumen-saldo').textContent = formatearPesos(saldoTotal);
+
+      // Ordenar por fecha desc
+      filtradas.sort((a, b) => b.fecha.localeCompare(a.fecha) || b.numeroOperacion - a.numeroOperacion);
+
+      const contenedor = document.getElementById('lista-ventas');
+      const estadoVacio = document.getElementById('estado-vacio');
+
+      if (filtradas.length === 0) {
+        contenedor.innerHTML = '';
+        estadoVacio.classList.remove('hidden');
+        return;
+      }
+      estadoVacio.classList.add('hidden');
+
+      // Agrupar por fecha
+      const grupos = {};
+      filtradas.forEach(v => { if (!grupos[v.fecha]) grupos[v.fecha] = []; grupos[v.fecha].push(v); });
+
+      let html = '';
+      Object.keys(grupos).sort((a, b) => b.localeCompare(a)).forEach(fecha => {
+        html += `
+          <div class="pt-4">
+            <div class="px-4 pb-2 text-xs font-bold text-gray-500 uppercase tracking-wide">
+              ${formatearFechaEncabezado(fecha)}
+            </div>`;
+        grupos[fecha].forEach(v => {
+          const saldoV = saldoDeVenta(v, cobros);
+          const cobradoV = cobradoDeVenta(v, cobros);
+          const total = Number(v.montoTotal || 0);
+          const estadoLabel = saldoV === 0
+            ? `<span class="text-xs text-green-700 font-semibold">✓ Saldada</span>`
+            : `<span class="text-xs text-red-600 font-semibold">⚠️ Saldo ${formatearPesos(saldoV)}</span>`;
+
+          html += `
+            <div class="mx-4 mb-2 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm cursor-pointer hover:bg-gray-50 transition"
+                 onclick="abrirDetalle(${v.id})">
+              <div class="flex justify-between items-start gap-3 mb-1">
+                <div class="flex-1 min-w-0">
+                  <div class="text-xs text-blue-700 font-bold">Op. #${v.numeroOperacion}</div>
+                  <div class="font-semibold text-gray-900 truncate">${v.pacienteNombre}</div>
+                  <div class="text-sm text-gray-500 truncate">${v.prestacionNombre}</div>
+                </div>
+                <div class="text-right">
+                  <div class="font-bold text-gray-900">${formatearPesos(total)}</div>
+                  <div class="text-xs text-gray-500">Cobrado: ${formatearPesos(cobradoV)}</div>
+                </div>
+              </div>
+              <div class="text-right">${estadoLabel}</div>
+            </div>`;
+        });
+        html += `</div>`;
+      });
+      contenedor.innerHTML = html;
+    }
+
+    // ================================================================
+    // Modal de detalle
+    // ================================================================
+    function abrirDetalle(id) {
+      const ventas = JSON.parse(localStorage.getItem('ventas') || '[]');
+      const cobros = JSON.parse(localStorage.getItem('cobros') || '[]');
+      const venta = ventas.find(v => v.id == id);
+      if (!venta) return;
+      ventaSeleccionadaId = id;
+
+      const cobrosV = cobrosDeVenta(id, cobros);
+      const cobradoV = cobradoDeVenta(venta, cobros);
+      const saldoV = saldoDeVenta(venta, cobros);
+
+      let htmlCobros = '';
+      if (cobrosV.length === 0) {
+        htmlCobros = '<div class="text-sm text-gray-500 italic py-2">Sin cobros registrados</div>';
+      } else {
+        cobrosV.forEach(c => {
+          htmlCobros += `
+            <div class="flex justify-between items-center py-1 text-sm">
+              <span class="text-gray-600">${c.fecha} · ${emojiMedio(c.medioCobroNombre)} ${c.medioCobroNombre}</span>
+              <span class="font-semibold">${formatearPesos(c.monto)}</span>
+            </div>`;
+        });
+      }
+
+      document.getElementById('detalle-contenido').innerHTML = `
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 text-center mb-3">
+          <div class="text-xs text-blue-600 uppercase font-semibold">Operación</div>
+          <div class="text-2xl font-bold text-blue-800">#${venta.numeroOperacion}</div>
+        </div>
+        <div class="flex justify-between border-b border-gray-100 pb-2">
+          <span class="text-gray-500">Fecha</span>
+          <span class="font-semibold">${venta.fecha}</span>
+        </div>
+        <div class="flex justify-between border-b border-gray-100 pb-2">
+          <span class="text-gray-500">Paciente</span>
+          <span class="font-semibold text-right">${venta.pacienteNombre}</span>
+        </div>
+        <div class="flex justify-between border-b border-gray-100 pb-2">
+          <span class="text-gray-500">Prestación</span>
+          <span class="font-semibold text-right">${venta.prestacionNombre}</span>
+        </div>
+        <div class="flex justify-between border-b border-gray-100 pb-2">
+          <span class="text-gray-500">Monto total</span>
+          <span class="font-bold">${formatearPesos(venta.montoTotal)}</span>
+        </div>
+        <div class="mt-3">
+          <div class="text-xs font-semibold text-gray-500 uppercase mb-1">Cobros</div>
+          ${htmlCobros}
+        </div>
+        <div class="mt-3 bg-gray-50 rounded-xl p-3 space-y-1">
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600">Cobrado:</span>
+            <span class="font-semibold text-green-700">${formatearPesos(cobradoV)}</span>
+          </div>
+          <div class="flex justify-between text-sm border-t border-gray-200 pt-1">
+            <span class="font-semibold text-gray-900">Saldo:</span>
+            <span class="font-bold ${saldoV > 0 ? 'text-red-600' : 'text-green-700'}">${formatearPesos(saldoV)}</span>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('modal-detalle').classList.remove('hidden');
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal-detalle').classList.add('hidden');
+      ventaSeleccionadaId = null;
+    }
+
+    function borrarVenta() {
+      if (!ventaSeleccionadaId) return;
+      if (!confirm('¿Seguro que querés borrar esta venta? Se van a borrar también todos sus cobros.')) return;
+      let ventas = JSON.parse(localStorage.getItem('ventas') || '[]');
+      let cobros = JSON.parse(localStorage.getItem('cobros') || '[]');
+      ventas = ventas.filter(v => v.id != ventaSeleccionadaId);
+      cobros = cobros.filter(c => c.ventaId != ventaSeleccionadaId);
+      localStorage.setItem('ventas', JSON.stringify(ventas));
+      localStorage.setItem('cobros', JSON.stringify(cobros));
+      cerrarModal();
+      const toast = document.getElementById('toast');
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 1500);
+      renderizar();
+    }
+
+    // ================================================================
+    // Exportar CSV
+    // ================================================================
+    function exportarCSV() {
+      const filtradas = obtenerVentasFiltradas();
+      if (filtradas.length === 0) { alert('No hay ventas para exportar'); return; }
+
+      const cobros = JSON.parse(localStorage.getItem('cobros') || '[]');
+      filtradas.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.numeroOperacion - b.numeroOperacion);
+
+      const sep = ';';
+      const cols = ['Nro. Operación', 'Fecha', 'Paciente', 'Prestación', 'Monto Total', 'Cobrado', 'Saldo', 'Medios usados'];
+
+      function esc(v) {
+        const s = String(v ?? '');
+        return (s.includes(sep) || s.includes('"') || s.includes('\n')) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      }
+
+      const filas = [cols.join(sep)];
+      filtradas.forEach(v => {
+        const cobradoV = cobradoDeVenta(v, cobros);
+        const saldoV = saldoDeVenta(v, cobros);
+        const cobrosV = cobrosDeVenta(v.id, cobros);
+        const mediosUsados = [...new Set(cobrosV.map(c => c.medioCobroNombre))].join(' + ');
+        filas.push([
+          esc(v.numeroOperacion),
+          esc(v.fecha),
+          esc(v.pacienteNombre),
+          esc(v.prestacionNombre),
+          esc(v.montoTotal),
+          esc(cobradoV),
+          esc(saldoV),
+          esc(mediosUsados || '—')
+        ].join(sep));
+      });
+
+      const bom = '﻿';
+      const blob = new Blob([bom + filas.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const hoy = new Date().toISOString().slice(0, 10);
+      link.href = url;
+      link.download = `ventas-${hoy}.csv`;
+      document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    // ================================================================
+    // Listeners
+    // ================================================================
+    document.getElementById('filtro-periodo').addEventListener('change', renderizar);
+    document.getElementById('filtro-paciente').addEventListener('change', renderizar);
+    document.getElementById('filtro-prestacion').addEventListener('change', renderizar);
+    document.getElementById('filtro-medio').addEventListener('change', renderizar);
+    document.getElementById('filtro-estado').addEventListener('change', renderizar);
+
+    cargarFiltrosExtra();
+    renderizar();
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nueva venta — HC Odontología</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+
+  <div class="max-w-md mx-auto bg-white min-h-screen shadow-lg pb-24">
+
+    <!-- Header -->
+    <header class="bg-blue-600 text-white px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
+      <a href="index.html" class="text-2xl hover:opacity-70">←</a>
+      <h1 class="text-lg font-bold">Nueva venta</h1>
+    </header>
+
+    <!-- FORMULARIO -->
+    <form id="form-venta" class="p-4 space-y-4">
+
+      <!-- FECHA -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Fecha</label>
+        <input type="date" id="fecha" required
+               class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none">
+      </div>
+
+      <!-- PACIENTE -->
+      <div class="relative">
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Paciente</label>
+        <input type="text" id="paciente-input" autocomplete="off" placeholder="🔍 Buscar paciente..."
+               class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none">
+        <input type="hidden" id="paciente-id">
+        <div id="paciente-sugerencias" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto"></div>
+      </div>
+
+      <!-- PRESTACIÓN -->
+      <div class="relative">
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Prestación</label>
+        <input type="text" id="prestacion-input" autocomplete="off" placeholder="🔍 Buscar prestación..."
+               class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none">
+        <input type="hidden" id="prestacion-id">
+        <div id="prestacion-sugerencias" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto"></div>
+      </div>
+
+      <!-- MONTO TOTAL -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Monto total de la venta</label>
+        <div class="relative">
+          <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-lg">$</span>
+          <input type="text" id="monto-total" required inputmode="decimal" placeholder="0"
+                 class="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none text-lg">
+        </div>
+      </div>
+
+      <!-- COBROS INICIALES -->
+      <div class="pt-2">
+        <div class="flex justify-between items-center mb-2">
+          <label class="text-sm font-semibold text-gray-700">Cobros iniciales <span class="text-gray-400 text-xs font-normal">(opcional)</span></label>
+        </div>
+        <p class="text-xs text-gray-500 mb-3">
+          Si el paciente paga parte o todo ahora, agregá los cobros. Lo que no se cobre queda como deuda.
+        </p>
+
+        <!-- Lista dinámica de cobros -->
+        <div id="cobros-lista" class="space-y-2 mb-2"></div>
+
+        <button type="button" onclick="agregarCobro()"
+                class="w-full flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 py-2 rounded-xl font-semibold text-sm transition">
+          <span>➕</span>
+          <span>Agregar cobro</span>
+        </button>
+      </div>
+
+      <!-- RESUMEN EN VIVO -->
+      <div id="resumen" class="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-2">
+        <div class="flex justify-between text-sm">
+          <span class="text-gray-600">Monto total:</span>
+          <span id="resumen-total" class="font-semibold">$0</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-gray-600">Cobrado ahora:</span>
+          <span id="resumen-cobrado" class="font-semibold text-green-700">$0</span>
+        </div>
+        <div class="flex justify-between border-t border-gray-200 pt-2">
+          <span class="text-gray-900 font-semibold">Saldo restante:</span>
+          <span id="resumen-saldo" class="font-bold text-red-600">$0</span>
+        </div>
+      </div>
+
+      <!-- ALERTA: cobrado supera el total -->
+      <div id="alerta-exceso" class="hidden bg-red-50 border border-red-300 text-red-800 rounded-xl p-3 text-sm flex gap-2 items-start">
+        <span class="text-lg">⚠️</span>
+        <div>
+          <div class="font-semibold">La suma de cobros supera el monto total.</div>
+          <div class="text-xs mt-1">Ajustá los cobros o aumentá el monto total antes de guardar.</div>
+        </div>
+      </div>
+
+      <!-- BOTÓN GUARDAR -->
+      <button type="submit" id="btn-guardar"
+              class="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 active:bg-green-700 text-white text-lg font-semibold py-4 rounded-2xl shadow-md transition mt-4 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:shadow-none">
+        <span class="text-xl">💾</span>
+        <span>Guardar venta</span>
+      </button>
+    </form>
+
+    <!-- MODAL NUEVO PACIENTE -->
+    <div id="modal-paciente" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl w-full max-w-sm p-5 shadow-xl">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-bold">Nuevo paciente</h3>
+          <button onclick="cerrarModal('modal-paciente')" class="text-2xl text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Apellido</label>
+            <input type="text" id="nuevo-paciente-apellido"
+                   class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Nombre</label>
+            <input type="text" id="nuevo-paciente-nombre"
+                   class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Teléfono <span class="text-gray-400 text-xs">(opcional)</span></label>
+            <input type="tel" id="nuevo-paciente-telefono"
+                   class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none">
+          </div>
+        </div>
+        <button onclick="guardarNuevoPaciente()"
+                class="w-full mt-5 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-xl transition">
+          💾 Guardar
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL NUEVA PRESTACIÓN -->
+    <div id="modal-prestacion" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl w-full max-w-sm p-5 shadow-xl">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-bold">Nueva prestación</h3>
+          <button onclick="cerrarModal('modal-prestacion')" class="text-2xl text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Nombre</label>
+            <input type="text" id="nueva-prestacion-nombre"
+                   class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Precio sugerido <span class="text-gray-400 text-xs">(opcional)</span></label>
+            <div class="relative">
+              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+              <input type="number" id="nueva-prestacion-precio" min="0"
+                     class="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none">
+            </div>
+          </div>
+        </div>
+        <button onclick="guardarNuevaPrestacion()"
+                class="w-full mt-5 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-xl transition">
+          💾 Guardar
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL NUEVO MEDIO DE COBRO -->
+    <div id="modal-medio" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl w-full max-w-sm p-5 shadow-xl">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-bold">Nuevo medio de cobro</h3>
+          <button onclick="cerrarModal('modal-medio')" class="text-2xl text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Nombre</label>
+          <input type="text" id="nuevo-medio-nombre" placeholder="Ej: Débito, Cheque, Banco Nación..."
+                 class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none">
+        </div>
+        <button onclick="guardarNuevoMedio()"
+                class="w-full mt-5 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-xl transition">
+          💾 Guardar
+        </button>
+      </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="hidden fixed top-20 left-1/2 -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg z-50 font-semibold">
+      ✓ Venta guardada
+    </div>
+
+    <!-- Barra inferior -->
+    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-200 flex justify-around py-2 shadow-lg">
+      <a href="index.html" class="flex flex-col items-center text-gray-400 text-xs">
+        <span class="text-2xl">🏠</span>
+        <span>Inicio</span>
+      </a>
+      <a href="lista-ventas.html" class="flex flex-col items-center text-gray-400 text-xs">
+        <span class="text-2xl">📋</span>
+        <span>Listas</span>
+      </a>
+      <a href="#" class="flex flex-col items-center text-gray-400 text-xs">
+        <span class="text-2xl">📁</span>
+        <span>Catálogos</span>
+      </a>
+      <a href="#" class="flex flex-col items-center text-gray-400 text-xs">
+        <span class="text-2xl">☰</span>
+        <span>Menú</span>
+      </a>
+    </nav>
+
+  </div>
+
+  <script>
+    // ================================================================
+    // INICIALIZACIÓN
+    // ================================================================
+    function inicializarDatos() {
+      // Auto-migración: si detectamos ventas con el modelo VIEJO (con "monto" y "medioCobro"), las borramos
+      const ventasRaw = localStorage.getItem('ventas');
+      if (ventasRaw) {
+        const ventas = JSON.parse(ventasRaw);
+        const modeloViejo = ventas.length > 0 && ventas.some(v => v.monto !== undefined && v.montoTotal === undefined);
+        if (modeloViejo) {
+          localStorage.setItem('ventas', JSON.stringify([]));
+          localStorage.setItem('cobros', JSON.stringify([]));
+        }
+      }
+
+      if (!localStorage.getItem('pacientes')) {
+        const pacientesEjemplo = [
+          { id: 1, apellido: 'Furne', nombre: 'Ana María', telefono: '' },
+          { id: 2, apellido: 'Botta', nombre: 'Rubén', telefono: '' },
+          { id: 3, apellido: 'Sisti', nombre: 'Belén', telefono: '' },
+          { id: 4, apellido: 'Pérez', nombre: 'Edgardo', telefono: '' },
+          { id: 5, apellido: 'Rodríguez', nombre: 'Sandro', telefono: '' },
+          { id: 6, apellido: 'Guzmán', nombre: 'María José', telefono: '' },
+          { id: 7, apellido: 'Mancilla', nombre: 'Miriam', telefono: '' },
+          { id: 8, apellido: 'Roldán', nombre: 'Claudia', telefono: '' },
+          { id: 9, apellido: 'Barrera', nombre: 'Edgardo', telefono: '' },
+          { id: 10, apellido: 'Kironda', nombre: 'Débora', telefono: '' }
+        ];
+        localStorage.setItem('pacientes', JSON.stringify(pacientesEjemplo));
+      }
+      if (!localStorage.getItem('prestaciones')) {
+        const prestacionesEjemplo = [
+          { id: 1, nombre: 'Consulta', precioSugerido: 7500 },
+          { id: 2, nombre: 'Limpieza', precioSugerido: 25000 },
+          { id: 3, nombre: 'Corona', precioSugerido: 180000 },
+          { id: 4, nombre: 'Tratamiento de conducto', precioSugerido: 95000 },
+          { id: 5, nombre: 'Extracción', precioSugerido: 45000 },
+          { id: 6, nombre: 'Incrustación', precioSugerido: 120000 },
+          { id: 7, nombre: 'Operatoria', precioSugerido: 30000 },
+          { id: 8, nombre: 'Blanqueamiento', precioSugerido: 55000 },
+          { id: 9, nombre: 'Ortodoncia', precioSugerido: 40000 },
+          { id: 10, nombre: 'Placa orgánica', precioSugerido: 50000 }
+        ];
+        localStorage.setItem('prestaciones', JSON.stringify(prestacionesEjemplo));
+      }
+      if (!localStorage.getItem('mediosCobro')) {
+        const mediosEjemplo = [
+          { id: 1, nombre: 'Efectivo', activo: true },
+          { id: 2, nombre: 'Banco Provincia', activo: true },
+          { id: 3, nombre: 'Mercado Pago', activo: true }
+        ];
+        localStorage.setItem('mediosCobro', JSON.stringify(mediosEjemplo));
+      }
+      if (!localStorage.getItem('ventas')) {
+        localStorage.setItem('ventas', JSON.stringify([]));
+      }
+      if (!localStorage.getItem('cobros')) {
+        localStorage.setItem('cobros', JSON.stringify([]));
+      }
+    }
+
+    function getPacientes() { return JSON.parse(localStorage.getItem('pacientes') || '[]'); }
+    function getPrestaciones() { return JSON.parse(localStorage.getItem('prestaciones') || '[]'); }
+    function getMediosCobro() { return JSON.parse(localStorage.getItem('mediosCobro') || '[]'); }
+    function getVentas() { return JSON.parse(localStorage.getItem('ventas') || '[]'); }
+    function getCobros() { return JSON.parse(localStorage.getItem('cobros') || '[]'); }
+
+    // ================================================================
+    // FORMATO DE MONTOS (argentino: 1.234.567,89)
+    // ================================================================
+    function formatearMonto(str) {
+      let valor = String(str).replace(/[^\d,]/g, '');
+      const partes = valor.split(',');
+      if (partes.length > 2) valor = partes[0] + ',' + partes.slice(1).join('');
+      const [entero, decimal] = valor.split(',');
+      const decLim = decimal !== undefined ? decimal.slice(0, 2) : undefined;
+      const entPuntos = entero.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      return decLim !== undefined ? entPuntos + ',' + decLim : entPuntos;
+    }
+    function parsearMonto(str) {
+      if (!str) return 0;
+      return parseFloat(String(str).replace(/\./g, '').replace(',', '.')) || 0;
+    }
+    function formatearNumeroAVisual(numero) {
+      if (numero === null || numero === undefined || numero === '') return '';
+      return formatearMonto(String(numero).replace('.', ','));
+    }
+    function formatearPesos(numero) {
+      return '$' + Number(numero || 0).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+
+    // ================================================================
+    // AUTOCOMPLETADO PACIENTE
+    // ================================================================
+    const inputPaciente = document.getElementById('paciente-input');
+    const sugerenciasPaciente = document.getElementById('paciente-sugerencias');
+    const hiddenPacienteId = document.getElementById('paciente-id');
+
+    inputPaciente.addEventListener('input', () => {
+      const texto = inputPaciente.value.trim().toLowerCase();
+      hiddenPacienteId.value = '';
+      if (texto.length < 1) { sugerenciasPaciente.classList.add('hidden'); return; }
+      const pacientes = getPacientes();
+      const coincidencias = pacientes.filter(p => (p.apellido + ' ' + p.nombre).toLowerCase().includes(texto));
+      let html = '';
+      coincidencias.forEach(p => {
+        html += `
+          <div class="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+               onclick="seleccionarPaciente(${p.id}, '${p.apellido}, ${p.nombre}')">
+            <div class="font-semibold">${p.apellido}, ${p.nombre}</div>
+          </div>`;
+      });
+      html += `
+        <div class="px-4 py-3 hover:bg-green-50 cursor-pointer bg-green-50 border-t-2 border-green-200"
+             onclick="abrirModalPaciente()">
+          <span class="text-green-700 font-semibold">➕ Agregar nuevo paciente "${inputPaciente.value.trim()}"</span>
+        </div>`;
+      sugerenciasPaciente.innerHTML = html;
+      sugerenciasPaciente.classList.remove('hidden');
+    });
+
+    function seleccionarPaciente(id, nombreCompleto) {
+      inputPaciente.value = nombreCompleto;
+      hiddenPacienteId.value = id;
+      sugerenciasPaciente.classList.add('hidden');
+    }
+
+    // ================================================================
+    // AUTOCOMPLETADO PRESTACIÓN
+    // ================================================================
+    const inputPrestacion = document.getElementById('prestacion-input');
+    const sugerenciasPrestacion = document.getElementById('prestacion-sugerencias');
+    const hiddenPrestacionId = document.getElementById('prestacion-id');
+    const inputMontoTotal = document.getElementById('monto-total');
+
+    inputPrestacion.addEventListener('input', () => {
+      const texto = inputPrestacion.value.trim().toLowerCase();
+      hiddenPrestacionId.value = '';
+      if (texto.length < 1) { sugerenciasPrestacion.classList.add('hidden'); return; }
+      const prestaciones = getPrestaciones();
+      const coincidencias = prestaciones.filter(p => p.nombre.toLowerCase().includes(texto));
+      let html = '';
+      coincidencias.forEach(p => {
+        const precio = p.precioSugerido ? formatearPesos(p.precioSugerido) : '';
+        html += `
+          <div class="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 flex justify-between items-center"
+               onclick="seleccionarPrestacion(${p.id}, '${p.nombre}', ${p.precioSugerido || 0})">
+            <span class="font-semibold">${p.nombre}</span>
+            <span class="text-gray-500 text-sm">${precio}</span>
+          </div>`;
+      });
+      html += `
+        <div class="px-4 py-3 hover:bg-green-50 cursor-pointer bg-green-50 border-t-2 border-green-200"
+             onclick="abrirModalPrestacion()">
+          <span class="text-green-700 font-semibold">➕ Agregar nueva prestación "${inputPrestacion.value.trim()}"</span>
+        </div>`;
+      sugerenciasPrestacion.innerHTML = html;
+      sugerenciasPrestacion.classList.remove('hidden');
+    });
+
+    function seleccionarPrestacion(id, nombre, precio) {
+      inputPrestacion.value = nombre;
+      hiddenPrestacionId.value = id;
+      if (precio > 0) {
+        inputMontoTotal.value = formatearNumeroAVisual(precio);
+        actualizarResumen();
+      }
+      sugerenciasPrestacion.classList.add('hidden');
+    }
+
+    // Formatear el monto total en vivo
+    inputMontoTotal.addEventListener('input', (e) => {
+      const posCursor = e.target.selectionStart;
+      const largoAntes = e.target.value.length;
+      const nuevoValor = formatearMonto(e.target.value);
+      e.target.value = nuevoValor;
+      const diferencia = nuevoValor.length - largoAntes;
+      const nuevaPos = Math.max(0, posCursor + diferencia);
+      e.target.setSelectionRange(nuevaPos, nuevaPos);
+      actualizarResumen();
+    });
+
+    // Cerrar sugerencias al hacer click fuera
+    document.addEventListener('click', (e) => {
+      if (!inputPaciente.contains(e.target) && !sugerenciasPaciente.contains(e.target)) sugerenciasPaciente.classList.add('hidden');
+      if (!inputPrestacion.contains(e.target) && !sugerenciasPrestacion.contains(e.target)) sugerenciasPrestacion.classList.add('hidden');
+    });
+
+    // ================================================================
+    // COBROS DINÁMICOS
+    // ================================================================
+    // Array temporal de cobros en construcción (antes de guardar la venta)
+    // Cada uno: { tempId, monto, medioCobroId }
+    let cobrosEnConstruccion = [];
+    let siguienteTempId = 1;
+
+    function agregarCobro() {
+      cobrosEnConstruccion.push({ tempId: siguienteTempId++, monto: '', medioCobroId: '' });
+      renderizarCobros();
+    }
+
+    function eliminarCobro(tempId) {
+      cobrosEnConstruccion = cobrosEnConstruccion.filter(c => c.tempId !== tempId);
+      renderizarCobros();
+      actualizarResumen();
+    }
+
+    function actualizarCobroMonto(tempId, valor) {
+      // Formatear en vivo
+      const valorFormateado = formatearMonto(valor);
+      const cobro = cobrosEnConstruccion.find(c => c.tempId === tempId);
+      if (cobro) cobro.monto = valorFormateado;
+      // Actualizar solo el input, no re-renderizar toda la lista
+      const input = document.getElementById(`cobro-monto-${tempId}`);
+      if (input && input.value !== valorFormateado) {
+        input.value = valorFormateado;
+      }
+      actualizarResumen();
+    }
+
+    function actualizarCobroMedio(tempId, valor) {
+      const cobro = cobrosEnConstruccion.find(c => c.tempId === tempId);
+      if (cobro) cobro.medioCobroId = valor;
+    }
+
+    function renderizarCobros() {
+      const cont = document.getElementById('cobros-lista');
+      if (cobrosEnConstruccion.length === 0) {
+        cont.innerHTML = '';
+        return;
+      }
+      const medios = getMediosCobro().filter(m => m.activo);
+      let html = '';
+      cobrosEnConstruccion.forEach((c, idx) => {
+        let opciones = '<option value="">Elegí un medio...</option>';
+        medios.forEach(m => {
+          const sel = (m.id == c.medioCobroId) ? 'selected' : '';
+          opciones += `<option value="${m.id}" ${sel}>${m.nombre}</option>`;
+        });
+        html += `
+          <div class="bg-white border border-gray-300 rounded-xl p-3 space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-bold text-gray-500 uppercase">Cobro ${idx + 1}</span>
+              <button type="button" onclick="eliminarCobro(${c.tempId})" class="text-red-500 hover:text-red-700 text-lg">🗑️</button>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                <input type="text" inputmode="decimal" id="cobro-monto-${c.tempId}" value="${c.monto}"
+                       placeholder="Monto"
+                       oninput="actualizarCobroMonto(${c.tempId}, this.value)"
+                       class="w-full pl-6 pr-2 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:outline-none">
+              </div>
+              <select onchange="actualizarCobroMedio(${c.tempId}, this.value)"
+                      class="w-full px-2 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:outline-none">
+                ${opciones}
+              </select>
+            </div>
+          </div>`;
+      });
+      cont.innerHTML = html;
+    }
+
+    function actualizarResumen() {
+      const total = parsearMonto(inputMontoTotal.value);
+      let cobrado = 0;
+      cobrosEnConstruccion.forEach(c => cobrado += parsearMonto(c.monto));
+      const saldo = total - cobrado;
+
+      document.getElementById('resumen-total').textContent = formatearPesos(total);
+      document.getElementById('resumen-cobrado').textContent = formatearPesos(cobrado);
+      const elSaldo = document.getElementById('resumen-saldo');
+      // Si el saldo es negativo mostrar con "-$" adelante en vez de "$-"
+      const saldoTxt = saldo < 0 ? '-' + formatearPesos(Math.abs(saldo)) : formatearPesos(saldo);
+      elSaldo.textContent = saldoTxt;
+
+      const alerta = document.getElementById('alerta-exceso');
+      const btnGuardar = document.getElementById('btn-guardar');
+
+      if (saldo < 0) {
+        // Cobrado supera el total
+        elSaldo.className = 'font-bold text-red-600';
+        alerta.classList.remove('hidden');
+        btnGuardar.disabled = true;
+      } else if (saldo === 0 && total > 0) {
+        // Venta saldada
+        elSaldo.className = 'font-bold text-green-700';
+        alerta.classList.add('hidden');
+        btnGuardar.disabled = false;
+      } else {
+        // Hay deuda (normal) o venta vacía
+        elSaldo.className = 'font-bold text-red-600';
+        alerta.classList.add('hidden');
+        btnGuardar.disabled = false;
+      }
+    }
+
+    // ================================================================
+    // MODALES (agregar paciente, prestación, medio)
+    // ================================================================
+    function abrirModalPaciente() {
+      const texto = inputPaciente.value.trim();
+      const partes = texto.split(',').map(s => s.trim());
+      document.getElementById('nuevo-paciente-apellido').value = partes[0] || '';
+      document.getElementById('nuevo-paciente-nombre').value = partes[1] || '';
+      document.getElementById('nuevo-paciente-telefono').value = '';
+      sugerenciasPaciente.classList.add('hidden');
+      document.getElementById('modal-paciente').classList.remove('hidden');
+    }
+    function abrirModalPrestacion() {
+      document.getElementById('nueva-prestacion-nombre').value = inputPrestacion.value.trim();
+      document.getElementById('nueva-prestacion-precio').value = '';
+      sugerenciasPrestacion.classList.add('hidden');
+      document.getElementById('modal-prestacion').classList.remove('hidden');
+    }
+    function abrirModalMedio() {
+      document.getElementById('nuevo-medio-nombre').value = '';
+      document.getElementById('modal-medio').classList.remove('hidden');
+    }
+    function cerrarModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+    function guardarNuevoPaciente() {
+      const apellido = document.getElementById('nuevo-paciente-apellido').value.trim();
+      const nombre = document.getElementById('nuevo-paciente-nombre').value.trim();
+      const telefono = document.getElementById('nuevo-paciente-telefono').value.trim();
+      if (!apellido || !nombre) { alert('Ingresá apellido y nombre'); return; }
+      const pacientes = getPacientes();
+      const nuevoId = pacientes.length ? Math.max(...pacientes.map(p => p.id)) + 1 : 1;
+      pacientes.push({ id: nuevoId, apellido, nombre, telefono });
+      localStorage.setItem('pacientes', JSON.stringify(pacientes));
+      seleccionarPaciente(nuevoId, `${apellido}, ${nombre}`);
+      cerrarModal('modal-paciente');
+    }
+    function guardarNuevaPrestacion() {
+      const nombre = document.getElementById('nueva-prestacion-nombre').value.trim();
+      const precio = parseFloat(document.getElementById('nueva-prestacion-precio').value) || 0;
+      if (!nombre) { alert('Ingresá el nombre'); return; }
+      const prestaciones = getPrestaciones();
+      const nuevoId = prestaciones.length ? Math.max(...prestaciones.map(p => p.id)) + 1 : 1;
+      prestaciones.push({ id: nuevoId, nombre, precioSugerido: precio });
+      localStorage.setItem('prestaciones', JSON.stringify(prestaciones));
+      seleccionarPrestacion(nuevoId, nombre, precio);
+      cerrarModal('modal-prestacion');
+    }
+    function guardarNuevoMedio() {
+      const nombre = document.getElementById('nuevo-medio-nombre').value.trim();
+      if (!nombre) { alert('Ingresá el nombre'); return; }
+      const medios = getMediosCobro();
+      if (medios.some(m => m.nombre.toLowerCase() === nombre.toLowerCase())) {
+        alert('Ya existe un medio con ese nombre'); return;
+      }
+      const nuevoId = medios.length ? Math.max(...medios.map(m => m.id)) + 1 : 1;
+      medios.push({ id: nuevoId, nombre, activo: true });
+      localStorage.setItem('mediosCobro', JSON.stringify(medios));
+      renderizarCobros(); // recargar selects
+      cerrarModal('modal-medio');
+    }
+
+    // ================================================================
+    // GUARDAR LA VENTA
+    // ================================================================
+    function generarNumeroOperacion() {
+      const ventas = getVentas();
+      if (ventas.length === 0) return 1000;
+      const max = Math.max(...ventas.map(v => Number(v.numeroOperacion) || 999));
+      return max + 1;
+    }
+
+    document.getElementById('form-venta').addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      // Validaciones básicas
+      if (!hiddenPacienteId.value) { alert('Elegí un paciente'); return; }
+      if (!hiddenPrestacionId.value) { alert('Elegí una prestación'); return; }
+      const montoTotal = parsearMonto(inputMontoTotal.value);
+      if (!montoTotal || montoTotal <= 0) { alert('Ingresá el monto total de la venta'); return; }
+
+      // Validar cada cobro
+      for (let i = 0; i < cobrosEnConstruccion.length; i++) {
+        const c = cobrosEnConstruccion[i];
+        const monto = parsearMonto(c.monto);
+        if (!monto || monto <= 0) { alert(`El cobro #${i + 1} tiene un monto inválido`); return; }
+        if (!c.medioCobroId) { alert(`Elegí un medio de cobro en el cobro #${i + 1}`); return; }
+      }
+
+      // Suma de cobros no puede superar el total
+      const sumaCobros = cobrosEnConstruccion.reduce((acc, c) => acc + parsearMonto(c.monto), 0);
+      if (sumaCobros > montoTotal) {
+        alert(`La suma de cobros (${formatearPesos(sumaCobros)}) supera el monto total de la venta (${formatearPesos(montoTotal)})`);
+        return;
+      }
+
+      // Aviso fecha futura
+      const fechaElegida = document.getElementById('fecha').value;
+      const hoyStr = new Date().toISOString().slice(0, 10);
+      if (fechaElegida > hoyStr) {
+        if (!confirm(`⚠️ La fecha elegida (${fechaElegida}) es posterior a hoy.\n\n¿Guardar igual?`)) return;
+      }
+
+      // Armar la venta
+      const pacientes = getPacientes();
+      const prestaciones = getPrestaciones();
+      const medios = getMediosCobro();
+      const paciente = pacientes.find(p => p.id == hiddenPacienteId.value);
+      const prestacion = prestaciones.find(p => p.id == hiddenPrestacionId.value);
+
+      const nroOperacion = generarNumeroOperacion();
+      const ventaId = Date.now();
+
+      const venta = {
+        id: ventaId,
+        numeroOperacion: nroOperacion,
+        fecha: fechaElegida,
+        pacienteId: paciente.id,
+        pacienteNombre: `${paciente.apellido}, ${paciente.nombre}`,
+        prestacionId: prestacion.id,
+        prestacionNombre: prestacion.nombre,
+        montoTotal: montoTotal
+      };
+
+      // Armar los cobros
+      const nuevosCobros = cobrosEnConstruccion.map((c, i) => {
+        const medio = medios.find(m => m.id == c.medioCobroId);
+        return {
+          id: Date.now() + i + 1, // ids únicos
+          ventaId: ventaId,
+          fecha: fechaElegida,
+          monto: parsearMonto(c.monto),
+          medioCobroId: medio.id,
+          medioCobroNombre: medio.nombre
+        };
+      });
+
+      // Guardar
+      const ventas = getVentas();
+      ventas.push(venta);
+      localStorage.setItem('ventas', JSON.stringify(ventas));
+
+      const cobros = getCobros();
+      cobros.push(...nuevosCobros);
+      localStorage.setItem('cobros', JSON.stringify(cobros));
+
+      // Toast + redirigir
+      const toast = document.getElementById('toast');
+      toast.textContent = `✓ Venta guardada — Op. #${nroOperacion}`;
+      toast.classList.remove('hidden');
+      setTimeout(() => { window.location.href = 'index.html'; }, 1500);
+    });
+
+    // ================================================================
+    // AL CARGAR LA PÁGINA
+    // ================================================================
+    inicializarDatos();
+    document.getElementById('fecha').valueAsDate = new Date();
+    actualizarResumen();
+  </script>
+
+</body>
+</html>

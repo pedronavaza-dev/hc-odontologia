@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deudores por venta — HC Odontología</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+
+  <div class="max-w-md mx-auto bg-white min-h-screen shadow-lg pb-24">
+
+    <!-- Header -->
+    <header class="bg-blue-600 text-white px-4 py-4 flex items-center gap-3 sticky top-0 z-10 shadow">
+      <a href="index.html" class="text-2xl hover:opacity-70">←</a>
+      <h1 class="text-lg font-bold">Deudores por venta</h1>
+    </header>
+
+    <!-- FILTROS Y RESUMEN -->
+    <div class="p-4 bg-gray-50 border-b border-gray-200 space-y-3">
+
+      <!-- Filtro por paciente -->
+      <div>
+        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+          Filtrar por paciente
+        </label>
+        <select id="filtro-paciente"
+                class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none">
+          <option value="">Todos los pacientes</option>
+        </select>
+      </div>
+
+      <!-- Resumen -->
+      <div class="bg-white border border-red-200 rounded-xl overflow-hidden">
+        <div class="grid grid-cols-2 divide-x divide-gray-200 text-center">
+          <div class="p-3">
+            <div class="text-xs text-gray-500 uppercase font-semibold">Total adeudado</div>
+            <div id="total-adeudado" class="font-bold text-red-600 mt-1">$0</div>
+          </div>
+          <div class="p-3">
+            <div class="text-xs text-gray-500 uppercase font-semibold">Operaciones</div>
+            <div id="total-operaciones" class="font-bold text-gray-900 mt-1">0</div>
+          </div>
+        </div>
+        <button onclick="exportarCSV()"
+                class="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-50 border-t border-gray-200 text-blue-700 font-semibold py-3 transition text-sm">
+          <span>📥</span>
+          <span>Exportar a Excel</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- LISTA -->
+    <div id="lista" class="pb-4"></div>
+
+    <!-- ESTADO VACÍO -->
+    <div id="estado-vacio" class="hidden p-8 text-center">
+      <div class="text-6xl mb-4">✅</div>
+      <h3 class="text-lg font-bold text-gray-700 mb-2">Sin deudas pendientes</h3>
+      <p class="text-sm text-gray-500">
+        No hay ventas con saldo pendiente. Todos los pacientes están al día 🎉
+      </p>
+    </div>
+
+    <!-- Barra inferior -->
+    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-200 flex justify-around py-2 shadow-lg">
+      <a href="index.html" class="flex flex-col items-center text-gray-400 text-xs">
+        <span class="text-2xl">🏠</span>
+        <span>Inicio</span>
+      </a>
+      <a href="lista-ventas.html" class="flex flex-col items-center text-blue-600 text-xs font-semibold">
+        <span class="text-2xl">📋</span>
+        <span>Listas</span>
+      </a>
+      <a href="#" class="flex flex-col items-center text-gray-400 text-xs">
+        <span class="text-2xl">📁</span>
+        <span>Catálogos</span>
+      </a>
+      <a href="#" class="flex flex-col items-center text-gray-400 text-xs">
+        <span class="text-2xl">☰</span>
+        <span>Menú</span>
+      </a>
+    </nav>
+
+  </div>
+
+  <script>
+    function formatearPesos(numero) {
+      return '$' + Number(numero || 0).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+    function getPacientes() { return JSON.parse(localStorage.getItem('pacientes') || '[]'); }
+    function getVentas() { return JSON.parse(localStorage.getItem('ventas') || '[]'); }
+    function getCobros() { return JSON.parse(localStorage.getItem('cobros') || '[]'); }
+    function saldoDeVenta(v, cobros) {
+      const cobrado = cobros.filter(c => c.ventaId == v.id).reduce((a, c) => a + Number(c.monto || 0), 0);
+      return Number(v.montoTotal || 0) - cobrado;
+    }
+
+    // ================================================================
+    // Cargar select de filtro por paciente
+    // ================================================================
+    function cargarFiltroPaciente() {
+      const ventas = getVentas();
+      const cobros = getCobros();
+      const pacientes = getPacientes();
+      // Solo pacientes que tienen al menos una venta con saldo
+      const idsConSaldo = new Set(
+        ventas.filter(v => saldoDeVenta(v, cobros) > 0).map(v => v.pacienteId)
+      );
+      const pacientesConSaldo = pacientes.filter(p => idsConSaldo.has(p.id));
+      pacientesConSaldo.sort((a,b) => (a.apellido+a.nombre).localeCompare(b.apellido+b.nombre));
+
+      const sel = document.getElementById('filtro-paciente');
+      let html = '<option value="">Todos los pacientes</option>';
+      pacientesConSaldo.forEach(p => {
+        html += `<option value="${p.id}">${p.apellido}, ${p.nombre}</option>`;
+      });
+      sel.innerHTML = html;
+    }
+
+    // ================================================================
+    // Renderizar la lista de deudores
+    // ================================================================
+    function renderizar() {
+      const ventas = getVentas();
+      const cobros = getCobros();
+      const filtroPac = document.getElementById('filtro-paciente').value;
+
+      // Todas las ventas con saldo, aplicando filtro por paciente
+      const conSaldo = ventas
+        .map(v => ({ ...v, saldo: saldoDeVenta(v, cobros) }))
+        .filter(v => v.saldo > 0)
+        .filter(v => !filtroPac || v.pacienteId == filtroPac);
+
+      // Total y cantidad
+      const totalAdeudado = conSaldo.reduce((a, v) => a + v.saldo, 0);
+      document.getElementById('total-adeudado').textContent = formatearPesos(totalAdeudado);
+      document.getElementById('total-operaciones').textContent = conSaldo.length;
+
+      const contenedor = document.getElementById('lista');
+      const vacio = document.getElementById('estado-vacio');
+
+      if (conSaldo.length === 0) {
+        contenedor.innerHTML = '';
+        vacio.classList.remove('hidden');
+        return;
+      }
+      vacio.classList.add('hidden');
+
+      // Agrupar por paciente
+      const grupos = {};
+      conSaldo.forEach(v => {
+        if (!grupos[v.pacienteId]) grupos[v.pacienteId] = { nombre: v.pacienteNombre, ventas: [], total: 0 };
+        grupos[v.pacienteId].ventas.push(v);
+        grupos[v.pacienteId].total += v.saldo;
+      });
+
+      // Ordenar pacientes por total adeudado descendente
+      const listaGrupos = Object.values(grupos).sort((a, b) => b.total - a.total);
+
+      let html = '';
+      listaGrupos.forEach(g => {
+        // Ordenar ventas del paciente por fecha ascendente (más viejas arriba)
+        g.ventas.sort((a, b) => a.fecha.localeCompare(b.fecha));
+
+        html += `
+          <div class="mx-4 mt-4 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+            <div class="bg-red-50 border-b border-red-200 px-4 py-3 flex justify-between items-center">
+              <div class="font-semibold text-gray-900">${g.nombre}</div>
+              <div class="font-bold text-red-600">${formatearPesos(g.total)}</div>
+            </div>
+            <div class="divide-y divide-gray-100">
+        `;
+
+        g.ventas.forEach(v => {
+          html += `
+            <div class="px-4 py-3">
+              <div class="flex justify-between items-start gap-3 mb-2">
+                <div class="flex-1 min-w-0">
+                  <div class="text-xs text-blue-700 font-bold">Op. #${v.numeroOperacion}</div>
+                  <div class="font-semibold text-gray-900 truncate">${v.prestacionNombre}</div>
+                  <div class="text-xs text-gray-500 mt-0.5">${v.fecha}</div>
+                </div>
+                <div class="text-right">
+                  <div class="text-xs text-gray-500">Saldo</div>
+                  <div class="font-bold text-red-600">${formatearPesos(v.saldo)}</div>
+                </div>
+              </div>
+              <a href="cargar-cobro.html?ventaId=${v.id}"
+                 class="block w-full text-center bg-green-500 hover:bg-green-600 text-white text-sm font-semibold py-2 rounded-lg transition">
+                💰 Cobrar
+              </a>
+            </div>`;
+        });
+
+        html += `</div></div>`;
+      });
+
+      contenedor.innerHTML = html;
+    }
+
+    // ================================================================
+    // Exportar CSV
+    // ================================================================
+    function exportarCSV() {
+      const ventas = getVentas();
+      const cobros = getCobros();
+      const filtroPac = document.getElementById('filtro-paciente').value;
+      const conSaldo = ventas
+        .map(v => ({ ...v, saldo: saldoDeVenta(v, cobros) }))
+        .filter(v => v.saldo > 0)
+        .filter(v => !filtroPac || v.pacienteId == filtroPac)
+        .sort((a, b) => a.pacienteNombre.localeCompare(b.pacienteNombre) || a.fecha.localeCompare(b.fecha));
+
+      if (conSaldo.length === 0) { alert('No hay deudas para exportar'); return; }
+
+      const sep = ';';
+      const cols = ['Paciente', 'Nro. Operación', 'Prestación', 'Fecha', 'Monto Total', 'Cobrado', 'Saldo'];
+      function esc(v) {
+        const s = String(v ?? '');
+        return (s.includes(sep) || s.includes('"') || s.includes('\n')) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      }
+
+      const filas = [cols.join(sep)];
+      conSaldo.forEach(v => {
+        const cobrado = Number(v.montoTotal) - v.saldo;
+        filas.push([
+          esc(v.pacienteNombre),
+          esc(v.numeroOperacion),
+          esc(v.prestacionNombre),
+          esc(v.fecha),
+          esc(v.montoTotal),
+          esc(cobrado),
+          esc(v.saldo)
+        ].join(sep));
+      });
+
+      const bom = '﻿';
+      const blob = new Blob([bom + filas.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const hoy = new Date().toISOString().slice(0, 10);
+      link.href = url;
+      link.download = `deudores-${hoy}.csv`;
+      document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    // ================================================================
+    // Init
+    // ================================================================
+    document.getElementById('filtro-paciente').addEventListener('change', renderizar);
+    cargarFiltroPaciente();
+    renderizar();
+  </script>
+
+</body>
+</html>
